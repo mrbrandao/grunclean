@@ -2,12 +2,25 @@ package model
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
+
+var (
+	Url, Token string
+)
+
+func Flags() {
+	flag.StringVar(&Url, "url", "https://localhost:4440", "the rundeck url")
+	flag.StringVar(&Token, "token", "GKrfka6yPg145IQuvvXZXbU2GxU5fKzJ", "user auth token")
+	defer flag.Parse()
+	return
+}
 
 //Nerror treat the errors is more a reuse function to avoid excessive if err != nil on the code
 func Nerror(i int, e error, s string) (error, string) {
@@ -49,7 +62,7 @@ func Version(x string) int {
 	return (jsonOut.Vv)
 }
 
-//ListProjects receives url + token + version in string and returns a list of Projects Names
+//ListProjects receives url + token + version as a string and returns a slice of Projects Names
 func ListProjects(x, y, z string) []Projects {
 	req, err := http.NewRequest("GET", x+"/api/"+z+"/projects?authtoken="+y, nil)
 	Nerror(103, err, "[ListProjects] Fail when get reponse from projects url. Error: ")
@@ -64,14 +77,23 @@ func ListProjects(x, y, z string) []Projects {
 	//fmt.Println(len(jsonOuts), jsonOuts[0].Name)
 	//fmt.Println(reflect.ValueOf(jsonOuts).Kind())
 	fmt.Println("Listing the projects found...")
-	//for i := 0; i < len(jsonOuts); i++ {
-	//	fmt.Println(jsonOuts[i].Name)
-	//}
 
 	return (jsonOuts)
 }
 
-//func ListJobs(x, y string) string {
-//	for i := 0; i
-//
-//}
+//ListJobs is a list of jobs found with ListProjects it receiveis two strings url + token
+func ListJobs(x, y string) string {
+	version := strconv.Itoa(Version(Url))
+	projectName := ListProjects(Url, Token, version)
+	fmt.Println(projectName)
+	for i := 0; i < len(projectName); i++ {
+		fmt.Println("Listing jobs in Project: ", string(projectName[i].Name))
+		req, err := http.NewRequest("GET", x+"/api/"+version+"/project/"+projectName[i].Name+"/jobs?authtoken="+y, nil)
+		Nerror(104, err, "[ListJobs] Fail when get reponse from jobs url. Error: ")
+		req.Header.Set("Accept", "application/json")
+		body := HttpClient(req)
+		fmt.Println(string(body))
+	}
+	return ("lalalala")
+
+}
