@@ -20,3 +20,20 @@ type JVersion struct {
 type Projects struct {
 	Name string `json:"name"`
 }
+
+type Jobs struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Execution struct {
+	Paging struct {
+		Count int `json:"count"`
+		Total int `json:"total"`
+	}
+	Executions []struct {
+		Id      int    `json:"id"`
+		Status  string `json:"status"`
+		Project string `json:"project"`
+	}
+}
