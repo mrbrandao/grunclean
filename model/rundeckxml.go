@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 //ApiV is a struct which receive the rundeck api version
 type ApiV struct {
 	Version string `xml:"apiversion,attr"`
@@ -34,8 +36,20 @@ type Execution struct {
 		Total int `json:"total"`
 	}
 	Executions []struct {
-		Id      int    `json:"id"`
-		Status  string `json:"status"`
-		Project string `json:"project"`
+		Id          int    `json:"id"`
+		Status      string `json:"status"`
+		Project     string `json:"project"`
+		DateStarted struct {
+			Date time.Time `json:"date"`
+		} `json:"date-started"`
+		DateEnded struct {
+			Date time.Time `json:"date"`
+		} `json:"date-ended"`
+		Job struct {
+			ID          string `json:"id"`
+			Name        string `json:"name"`
+			Group       string `json:"group"`
+			Description string `json:"description"`
+		} `json:"job"`
 	}
 }

@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Url, Token, Period, Max, Query, Action string
+	Url, Token, Period, Max, Query, Action, Type string
 )
 
 //Flags call the command-line flags arguments
@@ -31,6 +31,7 @@ func Flags() {
 	flag.StringVar(&Max, "max", "20", "Maximum number of executions. If 0 will list all.")
 	flag.StringVar(&Query, "query", "older", "Query executions by older or newer of the \"period\" flag.")
 	flag.StringVar(&Action, "action", "list", "The Action to be used. Can be list or delete.")
+	flag.StringVar(&Type, "type", "proj", "Which is the type you want list? Can be: \"proj|exec|job\".")
 	defer flag.Parse()
 	return
 }
@@ -89,7 +90,7 @@ func ListProjects(x, y, z string) []Projects {
 	//Example how to looping over this slice
 	//fmt.Println(len(jsonOuts), jsonOuts[0].Name)
 	//fmt.Println(reflect.ValueOf(jsonOuts).Kind())
-	fmt.Println("Listing the projects found...")
+	//fmt.Println("Listing the projects found...")
 
 	return (jsonOuts)
 }
@@ -98,7 +99,7 @@ func ListProjects(x, y, z string) []Projects {
 func ListJobs(x, y string) []Jobs {
 	version := strconv.Itoa(Version(x))
 	projectName := ListProjects(x, y, version)
-	fmt.Println(projectName)
+	//fmt.Println(projectName)
 	jsonOuts := []Jobs{}
 	for i := 0; i < len(projectName); i++ {
 		req, err := http.NewRequest("GET", x+"/api/"+version+"/project/"+projectName[i].Name+"/jobs?authtoken="+y, nil)
@@ -120,7 +121,7 @@ func ListExecutions(x, y string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
 	version := strconv.Itoa(Version(x))
 	projectName := ListProjects(x, y, version)
-	fmt.Println(projectName)
+	//fmt.Println(projectName)
 	jsonOuts := Execution{}
 	//params := strings.NewReader(`olderFilter=2w&max=0`)
 	filter := ("olderFilter=" + Period + "&max=" + Max)
@@ -143,7 +144,7 @@ func ListExecutions(x, y string) Execution {
 		body, err := ioutil.ReadAll(resp.Body)
 		Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
 		defer resp.Body.Close()
-		fmt.Println(string(body))
+		//fmt.Println(string(body))
 		err = json.Unmarshal(body, &jsonOuts)
 	}
 	//fmt.Printf("%+v\r\n", jsonOuts)
@@ -153,12 +154,22 @@ func ListExecutions(x, y string) Execution {
 }
 
 //Actions receives a flag string to run an action like list or delete.
-func Actions(x string) {
+func Actions(x, y string) {
 	if x == "list" {
-		list := ListExecutions(Url, Token)
-		for i := 0; i < len(list.Executions); i++ {
-			//fmt.Println(list.Executions[i].Id)
-			fmt.Println(list.Executions[i])
+		if y == "exec" {
+			fmt.Println("Listing Executions...")
+			list := ListExecutions(Url, Token)
+			for i := 0; i < len(list.Executions); i++ {
+				//fmt.Println(list.Executions[i].Id)
+				fmt.Printf("%+v\r\n", list.Executions[i])
+			}
+		} else if y == "job" {
+			fmt.Printf("%+v\r\n", ListJobs(Url, Token))
+		} else if y == "proj" {
+			fmt.Println("Listing projects...")
+			version := strconv.Itoa(Version(Url))
+			projectName := ListProjects(Url, Token, version)
+			fmt.Println(projectName)
 		}
 	}
 	return
