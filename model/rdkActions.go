@@ -13,12 +13,15 @@ import (
 )
 
 var (
-	Url, Token string
+	Url, Token, Period, Max, Query string
 )
 
 func Flags() {
 	flag.StringVar(&Url, "url", "https://localhost:4440", "the rundeck url")
 	flag.StringVar(&Token, "token", "GKrfka6yPg145IQuvvXZXbU2GxU5fKzJ", "user auth token")
+	flag.StringVar(&Period, "period", "1d", "The period of time range to narrow the executions result")
+	flag.StringVar(&Max, "max", "20", "Maximum number of executions. If 0 will list all.")
+	flag.StringVar(&Query, "query", "older", "The value of QuerFilter executions. Can be older or recent. Older will list executions older then period of time or newer the the period of time.")
 	defer flag.Parse()
 	return
 }
@@ -103,16 +106,22 @@ func ListJobs(x, y string) []Jobs {
 	return (jsonOuts)
 }
 
-func ListOlderExecutions(x, y string) Execution {
+func ListExecutions(x, y string) Execution {
 	version := strconv.Itoa(Version(x))
 	projectName := ListProjects(x, y, version)
 	fmt.Println(projectName)
 	jsonOuts := Execution{}
+	filter := ("olderFilter=" + Period + "&max=" + Max)
+	if Query != "older" {
+		filter = ("recentFilter=" + Period + "&max=" + Max)
+	}
+
 	for i := 0; i < len(projectName); i++ {
 		client := &http.Client{
 			Timeout: time.Second * 5,
 		}
-		params := strings.NewReader(`olderFilter=1d`)
+		//params := strings.NewReader(`olderFilter=`Period`&max=0`)
+		params := strings.NewReader(filter)
 		//		params := strings.NewReader(`recentFilter=1d`)
 		req, err := http.NewRequest("POST", x+"/api/"+version+"/project/"+projectName[i].Name+"/executions", params)
 		Nerror(105, err, "[ListOlderExecutions] Fail when get reponse from olderFilter url. Error: ")

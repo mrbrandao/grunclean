@@ -15,9 +15,9 @@ func main() {
 	model.ListJobs(model.Url, model.Token)
 	//	fmt.Println(teste)
 	fmt.Println("LUIZA")
-	listOlder := model.ListOlderExecutions(model.Url, model.Token)
-	for i := 0; i < len(listOlder.Executions); i++ {
-		fmt.Println(listOlder.Executions[i].Id)
+	list := model.ListExecutions(model.Url, model.Token)
+	for i := 0; i < len(list.Executions); i++ {
+		fmt.Println(list.Executions[i].Id)
 	}
 	//model.Test()
 
