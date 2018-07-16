@@ -21,11 +21,13 @@ type Projects struct {
 	Name string `json:"name"`
 }
 
+//Jobs receives the Id and Name for the api jobs list.
 type Jobs struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
+//Execution is a nested sctruct that receives the results of the executions list.
 type Execution struct {
 	Paging struct {
 		Count int `json:"count"`
