@@ -155,6 +155,37 @@ func ListExecutions(x, y string) Execution {
 	return (jsonOuts)
 }
 
+//DeleteExecution receives ListExecutions and execute the delete for this execution
+func DeleteExecution(id int) {
+	version := strconv.Itoa(Version(Url))
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
+	//	for idx, _ := range x.Executions {
+	//		//Debug Proposes
+	//		//fmt.Printf("indice[%d] ExecID: [%d]\r\n", idx, x.Executions[idx].Id)
+	//		client := &http.Client{
+	//			Timeout: time.Second * 5,
+	//		}
+	//		req, err := http.NewRequest("DELETE", Url+"/api/"+version+"/execution/"+strconv.Itoa(x.Executions[idx].Id), nil)
+	req, err := http.NewRequest("DELETE", Url+"/api/"+version+"/execution/"+strconv.Itoa(id), nil)
+	Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Rundeck-Auth-Token", Token)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	_, err = client.Do(req)
+	//resp, err := client.Do(req)
+	//resp := HttpClient(req)
+	Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
+	//body, err := ioutil.ReadAll(resp.Body)
+	//Nerror(107, err, "[DeleteExecution] Fail when read the request url. Error: ")
+	//defer resp.Body.Close()
+	//fmt.Println("Deleting Execution ID: [%d]", x.Executions[idx].Id)
+	fmt.Printf("Deleting Execution ID: [%d]\r\n", id)
+	//}
+	return
+}
+
 //Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
 	if x == "list" {
@@ -162,12 +193,13 @@ func Actions(x, y string) {
 		if y == "exec" {
 			fmt.Println("Listing Executions...")
 
-			//If Name are setted list only executions from the project Name
+			//If Name are setted, list only executions from the ~project~job Name
 			if Name != "" {
 				list := ListExecutions(Url, Token)
 				for i := 0; i < len(list.Executions); i++ {
 					//fmt.Println(list.Executions[i].Id)
-					if list.Executions[i].Project == Name {
+					//if list.Executions[i].Project == Name {
+					if list.Executions[i].Job.Name == Name {
 						fmt.Printf("%+v\r\n", list.Executions[i])
 					}
 				}
@@ -202,6 +234,34 @@ func Actions(x, y string) {
 				fmt.Println(projectName[i])
 			}
 		}
+	}
+	if x == "delete" {
+		if y == "exec" {
+			//If Name are setted, list only executions from the ~project~job Name
+			if Name != "" {
+				list := ListExecutions(Url, Token)
+				for i := 0; i < len(list.Executions); i++ {
+					if list.Executions[i].Job.Name == Name {
+						//fmt.Printf("%+v\r\n", list.Executions[i])
+						//fmt.Printf("========> %d\r\n", list.Executions[i].Id)
+						DeleteExecution(list.Executions[i].Id)
+					}
+				}
+				//Else list all the executions from all projects
+			} else {
+				list := ListExecutions(Url, Token)
+				for i := 0; i < len(list.Executions); i++ {
+					//fmt.Println(list.Executions[i].Id)
+					//fmt.Printf("%+v\r\n", list.Executions[i])
+					DeleteExecution(list.Executions[i].Id)
+				}
+			}
+		} else {
+			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
+		}
+
+		//model.DeleteExecution(model.ListExecutions(model.Url, model.Token))
+
 	}
 	return
 }
