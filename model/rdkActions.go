@@ -260,8 +260,6 @@ func Actions(x, y string) {
 			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
 		}
 
-		//model.DeleteExecution(model.ListExecutions(model.Url, model.Token))
-
 	}
 	return
 }

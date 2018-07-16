@@ -10,7 +10,7 @@
 #####List Recent executions based on period of time: http://rundeck.org/docs/api/#execution-query  
 ```curl -s -H "Content-Type:application/json" -H "X-RunDeck-Auth-Token:$API_TOKEN" http://$RUNDECK_HOST:4440/api/1/project/[Project]/executions -d "recentFilter=1w"```
   
-_This sample is the same as above but with max=0 which print all executions results instead of default which is only 20.
+_This sample is the same as above but with max=0 which print all executions results instead of default which is only 20._
 ```curl -s -H "Accept:application/json" -H "X-Rundeck-Auth-Token:GKrfka6yPg145IQuvvXZXbU2GxU5fKzJ" https://localhost:4440/api/21/project/Teste/executions -d "recentFilter=1d" -d "max=0"```
   
 #####List Older executions based on period of time: http://rundeck.org/docs/api/#execution-query  
