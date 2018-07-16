@@ -25,8 +25,9 @@ type Projects struct {
 
 //Jobs receives the Id and Name for the api jobs list.
 type Jobs struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id      string `json:"id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 //Execution is a nested sctruct that receives the results of the executions list.

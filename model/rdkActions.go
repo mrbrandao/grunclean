@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Url, Token, Period, Max, Query, Action, Type string
+	Url, Token, Period, Max, Query, Action, Type, Name string
 )
 
 //Flags call the command-line flags arguments
@@ -32,6 +32,7 @@ func Flags() {
 	flag.StringVar(&Query, "query", "older", "Query executions by older or newer of the \"period\" flag.")
 	flag.StringVar(&Action, "action", "list", "The Action to be used. Can be list or delete.")
 	flag.StringVar(&Type, "type", "proj", "Which is the type you want list? Can be: \"proj|exec|job\".")
+	flag.StringVar(&Name, "name", "", "Narrow querys by the name of the project, execution or job.")
 	defer flag.Parse()
 	return
 }
@@ -106,12 +107,13 @@ func ListJobs(x, y string) []Jobs {
 		Nerror(104, err, "[ListJobs] Fail when get reponse from jobs url. Error: ")
 		req.Header.Set("Accept", "application/json")
 		body := HttpClient(req)
+		//Enable this print for debug proposes
 		//fmt.Println(string(body))
 		err = json.Unmarshal(body, &jsonOuts)
 		if len(jsonOuts) <= 0 {
 			continue
 		}
-		fmt.Println("Listing jobs in Project: ", string(projectName[i].Name))
+		//fmt.Println("Listing jobs in Project: ", string(projectName[i].Name))
 	}
 	return (jsonOuts)
 }
@@ -153,23 +155,52 @@ func ListExecutions(x, y string) Execution {
 	return (jsonOuts)
 }
 
-//Actions receives a flag string to run an action like list or delete.
+//Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
 	if x == "list" {
+
 		if y == "exec" {
 			fmt.Println("Listing Executions...")
-			list := ListExecutions(Url, Token)
-			for i := 0; i < len(list.Executions); i++ {
-				//fmt.Println(list.Executions[i].Id)
-				fmt.Printf("%+v\r\n", list.Executions[i])
+
+			//If Name are setted list only executions from the project Name
+			if Name != "" {
+				list := ListExecutions(Url, Token)
+				for i := 0; i < len(list.Executions); i++ {
+					//fmt.Println(list.Executions[i].Id)
+					if list.Executions[i].Project == Name {
+						fmt.Printf("%+v\r\n", list.Executions[i])
+					}
+				}
+				//Else list all the executions from all projects
+			} else {
+				list := ListExecutions(Url, Token)
+				for i := 0; i < len(list.Executions); i++ {
+					//fmt.Println(list.Executions[i].Id)
+					fmt.Printf("%+v\r\n", list.Executions[i])
+				}
 			}
+
 		} else if y == "job" {
-			fmt.Printf("%+v\r\n", ListJobs(Url, Token))
+			fmt.Println("Listing jobs: ")
+			jobs := ListJobs(Url, Token)
+			if Name != "" {
+				for i := 0; i < len(jobs); i++ {
+					if jobs[i].Name == Name {
+						fmt.Printf("%+v\r\n", jobs[i])
+					}
+				}
+			} else {
+				for i := 0; i < len(jobs); i++ {
+					fmt.Printf("%+v\r\n", jobs[i])
+				}
+			}
 		} else if y == "proj" {
-			fmt.Println("Listing projects...")
+			fmt.Println("Listing all projects...")
 			version := strconv.Itoa(Version(Url))
 			projectName := ListProjects(Url, Token, version)
-			fmt.Println(projectName)
+			for i := 0; i < len(projectName); i++ {
+				fmt.Println(projectName[i])
+			}
 		}
 	}
 	return
