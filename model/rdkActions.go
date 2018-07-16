@@ -18,7 +18,7 @@ var (
 
 //Flags call the command-line flags arguments
 func Flags() {
-	flag.StringVar(&Url, "url", "https://localhost:4440", "the rundeck url")
+	flag.StringVar(&Url, "url", "http://localhost:4440", "the rundeck url")
 	flag.StringVar(&Token, "token", "GKrfka6yPg145IQuvvXZXbU2GxU5fKzJ", "user auth token")
 
 	/*Flags:
