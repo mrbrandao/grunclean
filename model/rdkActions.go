@@ -113,7 +113,7 @@ func ListJobs(x, y string) []Jobs {
 	//	projectName := ListProjects(x, y, version)
 	//fmt.Println(projectName)
 	jsonOuts := []Jobs{}
-	if ProjName == "" {
+	if ProjName == "" && Type != "proj" {
 		fmt.Println("Error... You must specify a project name with -project \"NameOfMyproject\"!.")
 		os.Exit(109)
 	}
@@ -144,7 +144,7 @@ func ListExecutions(x, y, z string) Execution {
 	if Query != "older" {
 		filter = ("recentFilter=" + Period + "&max=" + Max)
 	}
-	if ProjName == "" {
+	if ProjName == "" && Type != "proj" {
 		fmt.Println("Error... You must specify a project name with -project \"NameOfMyproject\"!.")
 		os.Exit(109)
 	}
