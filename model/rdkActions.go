@@ -9,11 +9,21 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 var (
-	Url, Token, Period, Max, Query, Action, Type, Name, ProjName string
+	Url,
+	Token,
+	Period,
+	Max,
+	Query,
+	Action,
+	Type,
+	Name,
+	ProjName string
+	Syncer sync.WaitGroup
 )
 
 //Flags call the command-line flags arguments
@@ -169,7 +179,7 @@ func ListExecutions(x, y string) Execution {
 func DeleteExecution(id int) {
 	version := strconv.Itoa(Version(Url))
 	client := &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 300,
 	}
 	//	for idx, _ := range x.Executions {
 	//		//Debug Proposes
@@ -193,6 +203,7 @@ func DeleteExecution(id int) {
 	//fmt.Println("Deleting Execution ID: [%d]", x.Executions[idx].Id)
 	fmt.Printf("Deleting Execution ID: [%d]\r\n", id)
 	//}
+	defer Syncer.Done()
 	return
 }
 
@@ -255,7 +266,10 @@ func Actions(x, y string) {
 						//fmt.Printf("%+v\r\n", list.Executions[i])
 						//fmt.Printf("========> %d\r\n", list.Executions[i].Id)
 						DeleteExecution(list.Executions[i].Id)
+						Syncer.Add(1)
+						go DeleteExecution(list.Executions[i].Id)
 					}
+					Syncer.Wait()
 				}
 				//Else list all the executions from all projects
 			} else {
@@ -263,8 +277,10 @@ func Actions(x, y string) {
 				for i := 0; i < len(list.Executions); i++ {
 					//fmt.Println(list.Executions[i].Id)
 					//fmt.Printf("%+v\r\n", list.Executions[i])
-					DeleteExecution(list.Executions[i].Id)
+					Syncer.Add(1)
+					go DeleteExecution(list.Executions[i].Id)
 				}
+				Syncer.Wait()
 			}
 		} else {
 			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
