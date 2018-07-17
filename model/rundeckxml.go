@@ -43,14 +43,14 @@ type Execution struct {
 		DateStarted struct {
 			Date time.Time `json:"date"`
 		} `json:"date-started"`
-		DateEnded struct {
-			Date time.Time `json:"date"`
-		} `json:"date-ended"`
+		//DateEnded struct {
+		//	Date time.Time `json:"date"`
+		//} `json:"date-ended"`
 		Job struct {
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Group       string `json:"group"`
-			Description string `json:"description"`
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Group string `json:"group"`
+			//Description string `json:"description"`
 		} `json:"job"`
 	}
 }

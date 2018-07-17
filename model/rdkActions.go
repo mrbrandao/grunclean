@@ -13,13 +13,13 @@ import (
 )
 
 var (
-	Url, Token, Period, Max, Query, Action, Type, Name string
+	Url, Token, Period, Max, Query, Action, Type, Name, ProjName string
 )
 
 //Flags call the command-line flags arguments
 func Flags() {
 	flag.StringVar(&Url, "url", "http://localhost:4440", "the rundeck url")
-	flag.StringVar(&Token, "token", "GKrfka6yPg145IQuvvXZXbU2GxU5fKzJ", "user auth token")
+	flag.StringVar(&Token, "token", "whSMNGB0UKuhItQnnzBn8qkCh4y3WFsy", "user auth token")
 
 	/*Flags:
 	  Max 20 > will narrow executions on max 20 executions.
@@ -33,6 +33,7 @@ func Flags() {
 	flag.StringVar(&Action, "action", "list", "The Action to be used. Can be list or delete.")
 	flag.StringVar(&Type, "type", "proj", "Which is the type you want list? Can be: \"proj|exec|job\".")
 	flag.StringVar(&Name, "name", "", "Narrow querys by the name of the project, execution or job.")
+	flag.StringVar(&ProjName, "project", "", "The project name to narrow jobs list.")
 	defer flag.Parse()
 	return
 }
@@ -99,22 +100,27 @@ func ListProjects(x, y, z string) []Projects {
 //ListJobs is a list of jobs found with ListProjects, it receiveis two strings url + token
 func ListJobs(x, y string) []Jobs {
 	version := strconv.Itoa(Version(x))
-	projectName := ListProjects(x, y, version)
+	//	projectName := ListProjects(x, y, version)
 	//fmt.Println(projectName)
 	jsonOuts := []Jobs{}
-	for i := 0; i < len(projectName); i++ {
-		req, err := http.NewRequest("GET", x+"/api/"+version+"/project/"+projectName[i].Name+"/jobs?authtoken="+y, nil)
-		Nerror(104, err, "[ListJobs] Fail when get reponse from jobs url. Error: ")
-		req.Header.Set("Accept", "application/json")
-		body := HttpClient(req)
-		//Enable this print for debug proposes
-		//fmt.Println(string(body))
-		err = json.Unmarshal(body, &jsonOuts)
-		if len(jsonOuts) <= 0 {
-			continue
-		}
-		//fmt.Println("Listing jobs in Project: ", string(projectName[i].Name))
+	if ProjName == "" {
+		fmt.Println("Error... You must specify a project name with -project \"NameOfMyproject\"!.")
+		os.Exit(109)
 	}
+	//	for i := 0; i < len(projectName); i++ {
+	//		req, err := http.NewRequest("GET", x+"/api/"+version+"/project/"+projectName[i].Name+"/jobs?authtoken="+y, nil)
+	req, err := http.NewRequest("GET", x+"/api/"+version+"/project/"+ProjName+"/jobs?authtoken="+y, nil)
+	Nerror(104, err, "[ListJobs] Fail when get reponse from jobs url. Error: ")
+	req.Header.Set("Accept", "application/json")
+	body := HttpClient(req)
+	//Enable this print for debug proposes
+	//fmt.Println(string(body))
+	err = json.Unmarshal(body, &jsonOuts)
+	//	if len(jsonOuts) <= 0 {
+	//		continue
+	//	}
+	//fmt.Println("Listing jobs in Project: ", string(projectName[i].Name))
+	//}
 	return (jsonOuts)
 }
 
@@ -122,7 +128,7 @@ func ListJobs(x, y string) []Jobs {
 func ListExecutions(x, y string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
 	version := strconv.Itoa(Version(x))
-	projectName := ListProjects(x, y, version)
+	//projectName := ListProjects(x, y, version)
 	//fmt.Println(projectName)
 	jsonOuts := Execution{}
 	//params := strings.NewReader(`olderFilter=2w&max=0`)
@@ -130,25 +136,29 @@ func ListExecutions(x, y string) Execution {
 	if Query != "older" {
 		filter = ("recentFilter=" + Period + "&max=" + Max)
 	}
-
-	for i := 0; i < len(projectName); i++ {
-		client := &http.Client{
-			Timeout: time.Second * 5,
-		}
-		params := strings.NewReader(filter)
-		req, err := http.NewRequest("POST", x+"/api/"+version+"/project/"+projectName[i].Name+"/executions", params)
-		Nerror(105, err, "[ListOlderExecutions] Fail when get reponse from olderFilter url. Error: ")
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("X-Rundeck-Auth-Token", y)
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		resp, err := client.Do(req)
-		Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
-		body, err := ioutil.ReadAll(resp.Body)
-		Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
-		defer resp.Body.Close()
-		//fmt.Println(string(body))
-		err = json.Unmarshal(body, &jsonOuts)
+	if ProjName == "" {
+		fmt.Println("Error... You must specify a project name with -project \"NameOfMyproject\"!.")
+		os.Exit(109)
 	}
+
+	//	for i := 0; i < len(projectName); i++ {
+	client := &http.Client{
+		Timeout: time.Second * 5,
+	}
+	params := strings.NewReader(filter)
+	req, err := http.NewRequest("POST", x+"/api/"+version+"/project/"+ProjName+"/executions", params)
+	Nerror(105, err, "[ListOlderExecutions] Fail when get reponse from olderFilter url. Error: ")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Rundeck-Auth-Token", y)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
+	body, err := ioutil.ReadAll(resp.Body)
+	Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
+	defer resp.Body.Close()
+	//fmt.Println(string(body))
+	err = json.Unmarshal(body, &jsonOuts)
+	//	}
 	//fmt.Printf("%+v\r\n", jsonOuts)
 	//How to show only the id with this nested struct.
 	//fmt.Println(jsonOuts.Executions[0].Id)
