@@ -135,12 +135,10 @@ func ListJobs(x, y string) []Jobs {
 }
 
 //ListExecutions receives two string url + token and return a list of executions narrow by flags.
-func ListExecutions(x, y string) Execution {
+func ListExecutions(x, y, z string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
-	version := strconv.Itoa(Version(x))
-	//projectName := ListProjects(x, y, version)
-	//fmt.Println(projectName)
 	jsonOuts := Execution{}
+
 	//params := strings.NewReader(`olderFilter=2w&max=0`)
 	filter := ("olderFilter=" + Period + "&max=" + Max)
 	if Query != "older" {
@@ -156,16 +154,17 @@ func ListExecutions(x, y string) Execution {
 		Timeout: time.Second * 5,
 	}
 	params := strings.NewReader(filter)
-	req, err := http.NewRequest("POST", x+"/api/"+version+"/project/"+ProjName+"/executions", params)
+	req, err := http.NewRequest("POST", x+"/api/"+z+"/project/"+ProjName+"/executions", params)
 	Nerror(105, err, "[ListOlderExecutions] Fail when get reponse from olderFilter url. Error: ")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Rundeck-Auth-Token", y)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
 	Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
+	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
-	defer resp.Body.Close()
 	//fmt.Println(string(body))
 	err = json.Unmarshal(body, &jsonOuts)
 	//	}
@@ -176,39 +175,27 @@ func ListExecutions(x, y string) Execution {
 }
 
 //DeleteExecution receives ListExecutions and execute the delete for this execution
-func DeleteExecution(id int) {
-	version := strconv.Itoa(Version(Url))
+func DeleteExecution(id int, v string) {
+	//version := strconv.Itoa(Version(Url))
 	client := &http.Client{
-		Timeout: time.Second * 300,
+		Timeout: time.Second * 900,
 	}
-	//	for idx, _ := range x.Executions {
-	//		//Debug Proposes
-	//		//fmt.Printf("indice[%d] ExecID: [%d]\r\n", idx, x.Executions[idx].Id)
-	//		client := &http.Client{
-	//			Timeout: time.Second * 5,
-	//		}
-	//		req, err := http.NewRequest("DELETE", Url+"/api/"+version+"/execution/"+strconv.Itoa(x.Executions[idx].Id), nil)
-	req, err := http.NewRequest("DELETE", Url+"/api/"+version+"/execution/"+strconv.Itoa(id), nil)
+	req, err := http.NewRequest("DELETE", Url+"/api/"+v+"/execution/"+strconv.Itoa(id), nil)
 	Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Rundeck-Auth-Token", Token)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	_, err = client.Do(req)
-	//resp, err := client.Do(req)
-	//resp := HttpClient(req)
 	Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
-	//body, err := ioutil.ReadAll(resp.Body)
-	//Nerror(107, err, "[DeleteExecution] Fail when read the request url. Error: ")
-	//defer resp.Body.Close()
-	//fmt.Println("Deleting Execution ID: [%d]", x.Executions[idx].Id)
 	fmt.Printf("Deleting Execution ID: [%d]\r\n", id)
-	//}
 	defer Syncer.Done()
 	return
 }
 
 //Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
+	ApiVersion := strconv.Itoa(Version(Url))
+	List := ListExecutions(Url, Token, ApiVersion)
 	if x == "list" {
 
 		if y == "exec" {
@@ -216,20 +203,18 @@ func Actions(x, y string) {
 
 			//If Name are setted, list only executions from the ~project~job Name
 			if Name != "" {
-				list := ListExecutions(Url, Token)
-				for i := 0; i < len(list.Executions); i++ {
+				for i := 0; i < len(List.Executions); i++ {
 					//fmt.Println(list.Executions[i].Id)
 					//if list.Executions[i].Project == Name {
-					if list.Executions[i].Job.Name == Name {
-						fmt.Printf("%+v\r\n", list.Executions[i])
+					if List.Executions[i].Job.Name == Name {
+						fmt.Printf("%+v\r\n", List.Executions[i])
 					}
 				}
 				//Else list all the executions from all projects
 			} else {
-				list := ListExecutions(Url, Token)
-				for i := 0; i < len(list.Executions); i++ {
+				for i := 0; i < len(List.Executions); i++ {
 					//fmt.Println(list.Executions[i].Id)
-					fmt.Printf("%+v\r\n", list.Executions[i])
+					fmt.Printf("%+v\r\n", List.Executions[i])
 				}
 			}
 
@@ -249,8 +234,8 @@ func Actions(x, y string) {
 			}
 		} else if y == "proj" {
 			fmt.Println("Listing all projects...")
-			version := strconv.Itoa(Version(Url))
-			projectName := ListProjects(Url, Token, version)
+			//			version := strconv.Itoa(Version(Url))
+			projectName := ListProjects(Url, Token, ApiVersion)
 			for i := 0; i < len(projectName); i++ {
 				fmt.Println(projectName[i])
 			}
@@ -260,32 +245,25 @@ func Actions(x, y string) {
 		if y == "exec" {
 			//If Name are setted, list only executions from the ~project~job Name
 			if Name != "" {
-				list := ListExecutions(Url, Token)
-				for i := 0; i < len(list.Executions); i++ {
-					if list.Executions[i].Job.Name == Name {
-						//fmt.Printf("%+v\r\n", list.Executions[i])
-						//fmt.Printf("========> %d\r\n", list.Executions[i].Id)
-						DeleteExecution(list.Executions[i].Id)
-						Syncer.Add(1)
-						go DeleteExecution(list.Executions[i].Id)
+				Syncer.Add(len(List.Executions))
+				for i := 0; i < len(List.Executions); i++ {
+					if List.Executions[i].Job.Name == Name {
+						//fmt.Printf("%+v\r\n", List.Executions[i])
+						go DeleteExecution(List.Executions[i].Id, ApiVersion)
 					}
 					Syncer.Wait()
 				}
 				//Else list all the executions from all projects
 			} else {
-				list := ListExecutions(Url, Token)
-				for i := 0; i < len(list.Executions); i++ {
-					//fmt.Println(list.Executions[i].Id)
-					//fmt.Printf("%+v\r\n", list.Executions[i])
-					Syncer.Add(1)
-					go DeleteExecution(list.Executions[i].Id)
+				Syncer.Add(len(List.Executions))
+				for i := 0; i < len(List.Executions); i++ {
+					go DeleteExecution(List.Executions[i].Id, ApiVersion)
 				}
 				Syncer.Wait()
 			}
 		} else {
 			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
 		}
-
 	}
 	return
 }
