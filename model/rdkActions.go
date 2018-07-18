@@ -24,7 +24,6 @@ var (
 	Type,
 	Name,
 	ProjName string
-	SyncList sync.WaitGroup
 	SyncDel  sync.WaitGroup
 	SyncIo   = make(chan []byte)
 	SyncExec = make(chan *Execution)
@@ -148,7 +147,6 @@ func ListJobs(x, y string) []Jobs {
 //ListExecutions receives two string url + token and return a list of executions narrow by flags.
 func ListExecutions(x, y, z string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
-	//	defer SyncList.Done()
 	jsonOuts := Execution{}
 
 	//params := strings.NewReader(`olderFilter=2w&max=0`)
@@ -212,7 +210,6 @@ func DeleteExecution(id int, v string) {
 //Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
 	ApiVersion := strconv.Itoa(Version(Url))
-	//	SyncList.Add(1)
 	go ListExecutions(Url, Token, ApiVersion)
 	List := <-SyncExec
 	//List := ListExecutions(Url, Token, ApiVersion)
@@ -284,6 +281,5 @@ func Actions(x, y string) {
 		}
 		SyncDel.Wait()
 	}
-	//	SyncList.Wait()
 	return
 }

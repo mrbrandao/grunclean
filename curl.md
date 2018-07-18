@@ -32,3 +32,6 @@ Caused by: java.lang.reflect.InvocationTargetException
 ... 47 more
 Caused by: java.lang.OutOfMemoryError: GC overhead limit exceeded```
 ---> References http://rundeck.org/docs/administration/tuning-rundeck.html
+
+####Rundeck too many connections error :bug: Need to fix routines to avoid this
+com.mysql.jdbc.exceptions.jdbc4.MySQLNonTransientConnectionException: Too many connections
