@@ -36,6 +36,13 @@ _This command will list all the last 20 executions older than 1 day._
   
 _This command use max=0 to list all executions and period=30d to list the executions older than 30 days._  
 
+*WARNING!*
+_Use `max=0` narrowed by few days like 1day or 1week, if you try to list Millions of thousans  
+executions you probably will hurt your rundeck feelings. I tested some curl executions with  
+150000 executions but i have to tune my rundeck session to `-Xmx4096m -Xms1024` to lead with  
+this query. Take care with `OutOfMemoryError`, see more about tunning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
+  
+
 The flag `-period` use the same values of rundeck [execution query](http://rundeck.org/docs/api/#execution-query) which is:  
 `h`: hour  
 `d`: day  

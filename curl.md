@@ -22,3 +22,13 @@ _This sample is the same as above but with max=0 setted will print all execution
 #####Delete executions  
 ```curl -X POST -s -H "Content-Length:0" -H "X-RunDeck-Auth-Token:$API_TOKEN" http://$RUNDECK_HOST:4440/api/12/executions/delete?ids=$exec_id```
   
+####Rundeck heap problem
+```ERROR GrailsExceptionResolver - OutOfMemoryError occurred when processing request: [POST] /api/21/project/Teste/executions
+GC overhead limit exceeded. Stacktrace follows:
+org.codehaus.groovy.grails.web.servlet.mvc.exceptions.ControllerExecutionException: Executing action [apiExecutionsQueryv14] of controller [rundeck.controllers.ExecutionController]  caused ex
+ception: Runtime error executing action
+...
+Caused by: java.lang.reflect.InvocationTargetException
+... 47 more
+Caused by: java.lang.OutOfMemoryError: GC overhead limit exceeded```
+---> References http://rundeck.org/docs/administration/tuning-rundeck.html

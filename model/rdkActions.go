@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -23,7 +24,10 @@ var (
 	Type,
 	Name,
 	ProjName string
-	Syncer sync.WaitGroup
+	SyncList sync.WaitGroup
+	SyncDel  sync.WaitGroup
+	SyncIo   = make(chan []byte)
+	SyncExec = make(chan *Execution)
 )
 
 //Flags call the command-line flags arguments
@@ -62,12 +66,19 @@ func HttpClient(r *http.Request) []byte {
 	client := &http.Client{
 		Timeout: time.Second * 5,
 	}
-	client.Do(r)
+	//client.Do(r)
 	reply, err := client.Do(r)
 	Nerror(101, err, "[HttpClient] Fail to request url with the Error: ")
 	defer reply.Body.Close()
 	body, _ := ioutil.ReadAll(reply.Body)
 	return body
+}
+
+func IoRead(c io.Reader) []byte {
+	body, err := ioutil.ReadAll(c)
+	Nerror(201, err, "[IoRead] Error on read request... ")
+	SyncIo <- body
+	return (body)
 }
 
 //Version returns the api version of Rundeck
@@ -137,6 +148,7 @@ func ListJobs(x, y string) []Jobs {
 //ListExecutions receives two string url + token and return a list of executions narrow by flags.
 func ListExecutions(x, y, z string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
+	//	defer SyncList.Done()
 	jsonOuts := Execution{}
 
 	//params := strings.NewReader(`olderFilter=2w&max=0`)
@@ -151,7 +163,7 @@ func ListExecutions(x, y, z string) Execution {
 
 	//	for i := 0; i < len(projectName); i++ {
 	client := &http.Client{
-		Timeout: time.Second * 5,
+		Timeout: time.Second * 30,
 	}
 	params := strings.NewReader(filter)
 	req, err := http.NewRequest("POST", x+"/api/"+z+"/project/"+ProjName+"/executions", params)
@@ -163,14 +175,19 @@ func ListExecutions(x, y, z string) Execution {
 	Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
+	//fmt.Printf("%T", resp.Body)
+	go IoRead(resp.Body)
+	body := <-SyncIo
+
+	//body, err := ioutil.ReadAll(resp.Body)
+	//Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
 	//fmt.Println(string(body))
 	err = json.Unmarshal(body, &jsonOuts)
 	//	}
 	//fmt.Printf("%+v\r\n", jsonOuts)
 	//How to show only the id with this nested struct.
 	//fmt.Println(jsonOuts.Executions[0].Id)
+	SyncExec <- &jsonOuts
 	return (jsonOuts)
 }
 
@@ -178,7 +195,7 @@ func ListExecutions(x, y, z string) Execution {
 func DeleteExecution(id int, v string) {
 	//version := strconv.Itoa(Version(Url))
 	client := &http.Client{
-		Timeout: time.Second * 900,
+		Timeout: time.Second * 30,
 	}
 	req, err := http.NewRequest("DELETE", Url+"/api/"+v+"/execution/"+strconv.Itoa(id), nil)
 	Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
@@ -188,14 +205,17 @@ func DeleteExecution(id int, v string) {
 	_, err = client.Do(req)
 	Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
 	fmt.Printf("Deleting Execution ID: [%d]\r\n", id)
-	defer Syncer.Done()
+	defer SyncDel.Done()
 	return
 }
 
 //Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
 	ApiVersion := strconv.Itoa(Version(Url))
-	List := ListExecutions(Url, Token, ApiVersion)
+	//	SyncList.Add(1)
+	go ListExecutions(Url, Token, ApiVersion)
+	List := <-SyncExec
+	//List := ListExecutions(Url, Token, ApiVersion)
 	if x == "list" {
 
 		if y == "exec" {
@@ -244,26 +264,26 @@ func Actions(x, y string) {
 	if x == "delete" {
 		if y == "exec" {
 			//If Name are setted, list only executions from the ~project~job Name
+			SyncDel.Add(len(List.Executions))
 			if Name != "" {
-				Syncer.Add(len(List.Executions))
 				for i := 0; i < len(List.Executions); i++ {
+					//					Syncer.Add(len(List.Executions))
 					if List.Executions[i].Job.Name == Name {
 						//fmt.Printf("%+v\r\n", List.Executions[i])
 						go DeleteExecution(List.Executions[i].Id, ApiVersion)
 					}
-					Syncer.Wait()
 				}
 				//Else list all the executions from all projects
 			} else {
-				Syncer.Add(len(List.Executions))
 				for i := 0; i < len(List.Executions); i++ {
 					go DeleteExecution(List.Executions[i].Id, ApiVersion)
 				}
-				Syncer.Wait()
 			}
 		} else {
 			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
 		}
+		SyncDel.Wait()
 	}
+	//	SyncList.Wait()
 	return
 }
