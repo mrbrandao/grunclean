@@ -39,8 +39,8 @@ _This command use max=0 to list all executions and period=30d to list the execut
 **WARNING!**  
 _Use `max=0` narrowed by few days like 1day or 1week, if you try to list Millions of thousands  
 executions you probably will hurt your rundeck feelings. I tested some curl executions with  
-150000 executions but I have to tune my rundeck session to `-Xmx4096m -Xms1024` to lead with  
-this query. Take care with `OutOfMemoryError`, see more about tunning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
+150000 executions but I have to tune my rundeck session to `-Xmx4096m -Xms1024` to deal with  
+this query. Take care with `OutOfMemoryError`, see more about tuning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
   
 
 The flag `-period` use the same values of rundeck [execution query](http://rundeck.org/docs/api/#execution-query) which is:  

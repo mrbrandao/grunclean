@@ -173,25 +173,19 @@ func ListExecutions(x, y, z string) Execution {
 	Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
 	defer resp.Body.Close()
 
-	//fmt.Printf("%T", resp.Body)
+	//Reading SyncIo Channel from body
 	go IoRead(resp.Body)
 	body := <-SyncIo
 
-	//body, err := ioutil.ReadAll(resp.Body)
-	//Nerror(107, err, "[ListOlderExecutions] Fail when read the request url. Error: ")
-	//fmt.Println(string(body))
 	err = json.Unmarshal(body, &jsonOuts)
-	//	}
-	//fmt.Printf("%+v\r\n", jsonOuts)
-	//How to show only the id with this nested struct.
-	//fmt.Println(jsonOuts.Executions[0].Id)
+
+	//Writing &jsonOut(*Execution) on SyncExec channel
 	SyncExec <- &jsonOuts
 	return (jsonOuts)
 }
 
 //DeleteExecution receives ListExecutions and execute the delete for this execution
 func DeleteExecution(id int, v string) {
-	//version := strconv.Itoa(Version(Url))
 	client := &http.Client{
 		Timeout: time.Second * 30,
 	}
@@ -212,7 +206,6 @@ func Actions(x, y string) {
 	ApiVersion := strconv.Itoa(Version(Url))
 	go ListExecutions(Url, Token, ApiVersion)
 	List := <-SyncExec
-	//List := ListExecutions(Url, Token, ApiVersion)
 	if x == "list" {
 
 		if y == "exec" {
@@ -261,17 +254,18 @@ func Actions(x, y string) {
 	if x == "delete" {
 		if y == "exec" {
 			//If Name are setted, list only executions from the ~project~job Name
-			SyncDel.Add(len(List.Executions))
 			if Name != "" {
 				for i := 0; i < len(List.Executions); i++ {
 					//					Syncer.Add(len(List.Executions))
 					if List.Executions[i].Job.Name == Name {
+						SyncDel.Add(1)
 						//fmt.Printf("%+v\r\n", List.Executions[i])
 						go DeleteExecution(List.Executions[i].Id, ApiVersion)
 					}
 				}
 				//Else list all the executions from all projects
 			} else {
+				SyncDel.Add(len(List.Executions))
 				for i := 0; i < len(List.Executions); i++ {
 					go DeleteExecution(List.Executions[i].Id, ApiVersion)
 				}
