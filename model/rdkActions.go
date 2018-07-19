@@ -24,9 +24,11 @@ var (
 	Type,
 	Name,
 	ProjName string
-	SyncDel  sync.WaitGroup
-	SyncIo   = make(chan []byte)
-	SyncExec = make(chan *Execution)
+	SyncWait   sync.WaitGroup
+	SyncIo     = make(chan []byte)
+	SyncExec   = make(chan *Execution)
+	SyncBulk   = make(chan *Execution)
+	SyncIoBulk = make(chan []byte)
 )
 
 //Flags call the command-line flags arguments
@@ -60,6 +62,23 @@ func Nerror(i int, e error, s string) (error, string) {
 	return e, s
 }
 
+//Waiting work as a progress bar, running concurrent until receives the response for rundeck.
+func Waiting() {
+	//bar := []string{"W", "a", "i", "t", "i", "n", "g", ".", ".", ".", "R", "u", "n", "d", "e", "c", "k", ".", ".", ".", "R", "e", "s", "p", "o", "n", "s", "e", ".", ".", "."}
+	bar := "+"
+	for {
+		//for j := 0; j < len(bar); j++ {
+		for j := 0; j < 10; j++ {
+			time.Sleep(100 * time.Millisecond)
+			//fmt.Printf("%s", bar[j])
+			fmt.Printf("%s", bar)
+		}
+	}
+	//Waiting rundeck responses for done
+	SyncWait.Wait()
+	return
+}
+
 //HttpClient create the http client connection
 func HttpClient(r *http.Request) []byte {
 	client := &http.Client{
@@ -77,6 +96,7 @@ func IoRead(c io.Reader) []byte {
 	body, err := ioutil.ReadAll(c)
 	Nerror(201, err, "[IoRead] Error on read request... ")
 	SyncIo <- body
+	SyncIoBulk <- body
 	return (body)
 }
 
@@ -181,24 +201,89 @@ func ListExecutions(x, y, z string) Execution {
 
 	//Writing &jsonOut(*Execution) on SyncExec channel
 	SyncExec <- &jsonOuts
+	SyncBulk <- &jsonOuts
 	return (jsonOuts)
 }
 
-//DeleteExecution receives ListExecutions and execute the delete for this execution
-func DeleteExecution(id int, v string) {
+//BulkDelete receives a intenger and delete a bulk of executions
+func BulkDelete(v string) {
+	Ids := <-SyncBulk
+	Size := len(Ids.Executions)
+	params := ""
+	MaxParams := 20
+	listids := ""
+	comma := ","
+
 	client := &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 60,
 	}
-	req, err := http.NewRequest("DELETE", Url+"/api/"+v+"/execution/"+strconv.Itoa(id), nil)
-	Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Rundeck-Auth-Token", Token)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	_, err = client.Do(req)
-	Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
-	fmt.Printf("Deleting Execution ID: [%d]\r\n", id)
-	defer SyncDel.Done()
+
+	ids := make([]string, Size)
+	for i := 0; i < Size; i++ {
+		ids[i] = strconv.Itoa(Ids.Executions[i].Id)
+
+		//If executions biger than 20
+		if Size > MaxParams {
+
+			if i < MaxParams {
+				listids = ids[i]
+				params = params + listids + comma
+				continue
+
+			} else {
+				params = params + listids
+				//disparar request
+				params = ("ids=" + params)
+				data := strings.NewReader(params)
+				fmt.Printf("Deleting Executions ID: [%s] ", params)
+				req, err := http.NewRequest("POST", Url+"/api/"+v+"/executions/delete", data)
+				Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
+				req.Header.Set("Accept", "application/json")
+				req.Header.Set("X-Rundeck-Auth-Token", Token)
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				SyncWait.Add(1)
+				go Waiting()
+				resp, err := client.Do(req)
+				Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
+				//defer resp.Body.Close()
+				if resp.StatusCode == 200 {
+					SyncWait.Done()
+					fmt.Printf(" === Delete Success ;)\r\n")
+				}
+				params = ""
+				MaxParams += 20
+			}
+
+		} else {
+			//Little deletes came here
+			listids = ids[i]
+			if i+1 < Size {
+				params = params + listids + comma
+				continue
+			}
+			params = params + listids
+			params = ("ids=" + params)
+			data := strings.NewReader(params)
+			fmt.Printf("Deleting Executions ID: [%s] ", params)
+			req, err := http.NewRequest("POST", Url+"/api/"+v+"/executions/delete", data)
+			Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
+			req.Header.Set("Accept", "application/json")
+			req.Header.Set("X-Rundeck-Auth-Token", Token)
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			SyncWait.Add(1)
+			go Waiting()
+			resp, err := client.Do(req)
+			Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
+			//defer resp.Body.Close()
+			if resp.StatusCode == 200 {
+				SyncWait.Done()
+				fmt.Printf(" === Delete Success ;)\r\n")
+			}
+		}
+	}
+
 	return
+
 }
 
 //Actions receives a flag string to run an action like: list or delete.
@@ -253,27 +338,20 @@ func Actions(x, y string) {
 	}
 	if x == "delete" {
 		if y == "exec" {
-			//If Name are setted, list only executions from the ~project~job Name
+			//If Name are setted, list only executions from the job Name
 			if Name != "" {
 				for i := 0; i < len(List.Executions); i++ {
-					//					Syncer.Add(len(List.Executions))
 					if List.Executions[i].Job.Name == Name {
-						SyncDel.Add(1)
-						//fmt.Printf("%+v\r\n", List.Executions[i])
-						go DeleteExecution(List.Executions[i].Id, ApiVersion)
 					}
 				}
+				BulkDelete(ApiVersion)
 				//Else list all the executions from all projects
 			} else {
-				SyncDel.Add(len(List.Executions))
-				for i := 0; i < len(List.Executions); i++ {
-					go DeleteExecution(List.Executions[i].Id, ApiVersion)
-				}
+				BulkDelete(ApiVersion)
 			}
 		} else {
 			fmt.Println("Sorry can't execute delete action on the resource: ", Type)
 		}
-		SyncDel.Wait()
 	}
 	return
 }
