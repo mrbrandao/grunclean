@@ -24,11 +24,14 @@ var (
 	Type,
 	Name,
 	ProjName string
-	SyncWait   sync.WaitGroup
-	SyncIo     = make(chan []byte)
-	SyncExec   = make(chan *Execution)
-	SyncBulk   = make(chan *Execution)
-	SyncIoBulk = make(chan []byte)
+	SyncWait    sync.WaitGroup
+	SyncWaitReq sync.WaitGroup
+	SyncIo      = make(chan []byte)
+	SyncExec    = make(chan *Execution)
+	SyncBulk    = make(chan *Execution)
+	SyncIoBulk  = make(chan []byte)
+	SyncReq     = make(chan *http.Response)
+	SyncBuf     = make(chan *http.Response, 1)
 )
 
 //Flags call the command-line flags arguments
@@ -69,7 +72,7 @@ func Waiting() {
 	for {
 		//for j := 0; j < len(bar); j++ {
 		for j := 0; j < 10; j++ {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(400 * time.Millisecond)
 			//fmt.Printf("%s", bar[j])
 			fmt.Printf("%s", bar)
 		}
@@ -165,7 +168,7 @@ func ListJobs(x, y string) []Jobs {
 }
 
 //ListExecutions receives two string url + token and return a list of executions narrow by flags.
-func ListExecutions(x, y, z string) Execution {
+func ListExecutions(v string) Execution {
 	//Consult this nice curl converter on curl-to-Go: https://mholt.github.io/curl-to-go
 	jsonOuts := Execution{}
 
@@ -179,30 +182,58 @@ func ListExecutions(x, y, z string) Execution {
 		os.Exit(109)
 	}
 
-	//	for i := 0; i < len(projectName); i++ {
-	client := &http.Client{
-		Timeout: time.Second * 30,
-	}
-	params := strings.NewReader(filter)
-	req, err := http.NewRequest("POST", x+"/api/"+z+"/project/"+ProjName+"/executions", params)
-	Nerror(105, err, "[ListOlderExecutions] Fail when get reponse from olderFilter url. Error: ")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Rundeck-Auth-Token", y)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := client.Do(req)
-	Nerror(106, err, "[ListOlderExecutions] Fail when execute request on url. Error: ")
+	go HttpReq(filter, "/project/"+ProjName+"/executions", v)
+	resp := <-SyncReq
 	defer resp.Body.Close()
-
+	if resp.StatusCode == 200 {
+		SyncWait.Done()
+		fmt.Printf(" === Action Success ;)\r\n")
+	}
 	//Reading SyncIo Channel from body
 	go IoRead(resp.Body)
 	body := <-SyncIo
 
-	err = json.Unmarshal(body, &jsonOuts)
+	err := json.Unmarshal(body, &jsonOuts)
+	Nerror(108, err, "[] Fail when Json Unmarshal. Error: ")
 
 	//Writing &jsonOut(*Execution) on SyncExec channel
 	SyncExec <- &jsonOuts
 	SyncBulk <- &jsonOuts
 	return (jsonOuts)
+}
+
+func HttpReq(params, sururl, version string) *http.Response {
+	client := &http.Client{
+		Timeout: time.Second * 60,
+	}
+	var req *http.Request
+	var err error
+
+	Address := Url + "/api/" + version + sururl
+	if sururl == "" {
+		Address = Url + "/api"
+	}
+
+	if params == "" {
+		req, err = http.NewRequest("GET", Address, nil)
+	} else {
+		data := strings.NewReader(params)
+		req, err = http.NewRequest("POST", Address, data)
+	}
+	Nerror(105, err, "[HttpReq] Fail on create the request. Error: ")
+
+	//req, err := http.NewRequest(method, Url+"/api/"+v+"/executions/delete", data)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Rundeck-Auth-Token", Token)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	SyncWait.Add(1)
+	go Waiting()
+	resp, err := client.Do(req)
+	Nerror(106, err, "[HttpReq] Fail when execute request on url. Error: ")
+	SyncReq <- resp
+	SyncBuf <- resp
+	return (resp)
+
 }
 
 //BulkDelete receives a intenger and delete a bulk of executions
@@ -213,10 +244,6 @@ func BulkDelete(v string) {
 	MaxParams := 20
 	listids := ""
 	comma := ","
-
-	client := &http.Client{
-		Timeout: time.Second * 60,
-	}
 
 	ids := make([]string, Size)
 	for i := 0; i < Size; i++ {
@@ -234,21 +261,15 @@ func BulkDelete(v string) {
 				params = params + listids
 				//disparar request
 				params = ("ids=" + params)
-				data := strings.NewReader(params)
+				//DelReq(params, v)
+				//req, err := http.NewRequest(method, Url+"/api/"+v+"/executions/delete", data)
 				fmt.Printf("Deleting Executions ID: [%s] ", params)
-				req, err := http.NewRequest("POST", Url+"/api/"+v+"/executions/delete", data)
-				Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
-				req.Header.Set("Accept", "application/json")
-				req.Header.Set("X-Rundeck-Auth-Token", Token)
-				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-				SyncWait.Add(1)
-				go Waiting()
-				resp, err := client.Do(req)
-				Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
-				//defer resp.Body.Close()
+				go HttpReq("ids="+params, "/executions/delete", v)
+				resp := <-SyncReq
+				defer resp.Body.Close()
 				if resp.StatusCode == 200 {
 					SyncWait.Done()
-					fmt.Printf(" === Delete Success ;)\r\n")
+					fmt.Printf(" === Action Success ;)\r\n")
 				}
 				params = ""
 				MaxParams += 20
@@ -263,24 +284,18 @@ func BulkDelete(v string) {
 			}
 			params = params + listids
 			params = ("ids=" + params)
-			data := strings.NewReader(params)
 			fmt.Printf("Deleting Executions ID: [%s] ", params)
-			req, err := http.NewRequest("POST", Url+"/api/"+v+"/executions/delete", data)
-			Nerror(105, err, "[DeleteExecutions] Fail on delete request. Error: ")
-			req.Header.Set("Accept", "application/json")
-			req.Header.Set("X-Rundeck-Auth-Token", Token)
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			SyncWait.Add(1)
-			go Waiting()
-			resp, err := client.Do(req)
-			Nerror(106, err, "[DeleteExecution] Fail when execute request on url. Error: ")
-			//defer resp.Body.Close()
+			go HttpReq(params, "/executions/delete", v)
+			resp := <-SyncBuf
+			defer resp.Body.Close()
 			if resp.StatusCode == 200 {
 				SyncWait.Done()
-				fmt.Printf(" === Delete Success ;)\r\n")
+				fmt.Printf(" === Action Success ;)\r\n")
 			}
+			//DelReq(params, v)
 		}
 	}
+	SyncWaitReq.Wait()
 
 	return
 
@@ -289,11 +304,11 @@ func BulkDelete(v string) {
 //Actions receives a flag string to run an action like: list or delete.
 func Actions(x, y string) {
 	ApiVersion := strconv.Itoa(Version(Url))
-	go ListExecutions(Url, Token, ApiVersion)
-	List := <-SyncExec
 	if x == "list" {
 
 		if y == "exec" {
+			go ListExecutions(ApiVersion)
+			List := <-SyncExec
 			fmt.Println("Listing Executions...")
 
 			//If Name are setted, list only executions from the ~project~job Name
@@ -338,6 +353,8 @@ func Actions(x, y string) {
 	}
 	if x == "delete" {
 		if y == "exec" {
+			go ListExecutions(ApiVersion)
+			List := <-SyncExec
 			//If Name are setted, list only executions from the job Name
 			if Name != "" {
 				for i := 0; i < len(List.Executions); i++ {
