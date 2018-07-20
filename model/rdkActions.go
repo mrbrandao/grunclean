@@ -69,7 +69,7 @@ func Waiting() {
 	for {
 		//for j := 0; j < len(bar); j++ {
 		for j := 0; j < 10; j++ {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			//fmt.Printf("%s", bar[j])
 			fmt.Printf("%s", bar)
 		}
@@ -215,7 +215,7 @@ func BulkDelete(v string) {
 	comma := ","
 
 	client := &http.Client{
-		Timeout: time.Second * 60,
+		Timeout: time.Second * 300,
 	}
 
 	ids := make([]string, Size)

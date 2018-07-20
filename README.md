@@ -41,8 +41,10 @@ _Use `max=0` narrowed by few days like 1day or 1week, if you try to list Million
 executions you probably will hurt your rundeck feelings. I tested some curl executions with  
 150000 executions but I have to tune my rundeck session to `-Xmx4096m -Xms1024` to deal with  
 this query. Take care with `OutOfMemoryError`, see more about tuning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
+_If you use mysql as database you must also do some fine tuning on mysql to avoid lock.  
+You can `set global innodb_lock_wait_timeout = 9000;` and `set global max_connections = 200;` to  
+improve the performance on large scale executions delete._  
   
-
 The flag `-period` use the same values of rundeck [execution query](http://rundeck.org/docs/api/#execution-query) which is:  
 `h`: hour  
 `d`: day  

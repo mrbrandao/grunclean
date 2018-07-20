@@ -21,7 +21,11 @@ _This sample is the same as above but with max=0 setted will print all execution
   
 #####Delete executions  
 ```curl -X POST -s -H "Content-Length:0" -H "X-RunDeck-Auth-Token:$API_TOKEN" http://$RUNDECK_HOST:4440/api/12/executions/delete?ids=$exec_id```
-  
+
+####Delete all executions for a job
+```curl -s -X DELETE -H "Accept:application/json" -H "X-RunDeck-Auth-Token:$API_TOKEN" $RUNDECK_HOST/api/21/job/265b8dc0-47a4-43d3-8f5f-d6fa0f4db41a/executions```  
+
+
 ####Rundeck heap problem
 ```ERROR GrailsExceptionResolver - OutOfMemoryError occurred when processing request: [POST] /api/21/project/Teste/executions
 GC overhead limit exceeded. Stacktrace follows:
