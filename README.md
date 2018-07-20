@@ -5,6 +5,12 @@ executions by rundeck api._
 
 ![](gif/grunclean.gif?raw=true)
 
+### Installation  
+
+```
+go get github.com/isca0/grunclean
+```
+  
 ### Use
 
 This tool follows the K.I.S.S philosophy style, to do one thing and do well.  
@@ -36,14 +42,6 @@ _This command will list all the last 20 executions older than 1 day._
   
 _This command use max=0 to list all executions and period=30d to list the executions older than 30 days._  
 
-**WARNING!**  
-_Use `max=0` narrowed by few days like 1day or 1week, if you try to list Millions of thousands  
-executions you probably will hurt your rundeck feelings. I tested some curl executions with  
-150000 executions but I have to tune my rundeck session to `-Xmx4096m -Xms1024` to deal with  
-this query. Take care with `OutOfMemoryError`, see more about tuning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
-_If you use mysql as database you must also do some fine tuning on mysql to avoid lock.  
-You can `set global innodb_lock_wait_timeout = 9000;` and `set global max_connections = 200;` to  
-improve the performance on large scale executions delete._  
   
 The flag `-period` use the same values of rundeck [execution query](http://rundeck.org/docs/api/#execution-query) which is:  
 `h`: hour  
@@ -90,13 +88,16 @@ _This command will delete all executions older than 60 days only for the job `My
 _This command will delete all executions older then 7 weeks for all projects._  
   
   
-### Installation  
-
-```
-go get github.com/isca0/grunclean
-```
-
-
+**WARNING!**  
+_Use `max=0` narrowed by few days like 1day or 1week, if you try to list Millions of thousands  
+executions you probably will hurt your rundeck feelings. I tested some curl executions with  
+150000 executions but I have to tune my rundeck session to `-Xmx4096m -Xms1024` to deal with  
+this query. Take care with `OutOfMemoryError`, see more about tuning [here](http://rundeck.org/docs/administration/tuning-rundeck.html)._  
+_If you use mysql as database you must also do some fine tuning on mysql to avoid lock.  
+You can `set global innodb_lock_wait_timeout = 9000;` and `set global max_connections = 200;` to  
+improve the performance on large scale executions delete._  
+  
+  
 ### Author  
   
 Igor Brandao [isca](isca.space)  
