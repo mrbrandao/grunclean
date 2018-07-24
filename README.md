@@ -96,6 +96,9 @@ this query. Take care with `OutOfMemoryError`, see more about tuning [here](http
 _If you use mysql as database you must also do some fine tuning on mysql to avoid lock.  
 You can `set global innodb_lock_wait_timeout = 9000;` and `set global max_connections = 200;` to  
 improve the performance on large scale executions delete._  
+_I also must advise I only test this script with 15000 executions, so if you must delete Millions  
+executions I believe it will be way more fast to exclude via shell script direct from console  
+instead of using the Api which is far more slowly._
   
   
 ### Author  
