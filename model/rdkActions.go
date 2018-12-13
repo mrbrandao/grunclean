@@ -69,7 +69,7 @@ func Waiting() {
 	for {
 		//for j := 0; j < len(bar); j++ {
 		for j := 0; j < 10; j++ {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(3 * time.Second)
 			//fmt.Printf("%s", bar[j])
 			fmt.Printf("%s", bar)
 		}
@@ -248,7 +248,7 @@ func BulkDelete(v string) {
 				//defer resp.Body.Close()
 				if resp.StatusCode == 200 {
 					SyncWait.Done()
-					fmt.Printf(" === Delete Success ;)\r\n")
+					fmt.Printf(" == Success 👍 \r\n")
 				}
 				params = ""
 				MaxParams += 20
