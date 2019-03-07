@@ -277,7 +277,7 @@ func BulkDelete(v string) {
 			//defer resp.Body.Close()
 			if resp.StatusCode == 200 {
 				SyncWait.Done()
-				fmt.Printf(" === Delete Success ;)\r\n")
+				fmt.Printf(" == Success 🤘\r\n")
 			}
 		}
 	}
